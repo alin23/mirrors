@@ -1,7 +1,6 @@
 import Cocoa
 import Foundation
 
-
 enum OSDImage: Int64 {
     case brightness = 1
     case contrast = 11
@@ -21,22 +20,29 @@ func displayInfoDictionary(_ id: CGDirectDisplayID) -> NSDictionary? {
 
 func name(for id: CGDirectDisplayID) -> String? {
     guard let dict = displayInfoDictionary(id),
-    let name = (dict["DisplayProductName"] as? [String: String])?["en_US"] else {
+          let name = (dict["DisplayProductName"] as? [String: String])?["en_US"]
+    else {
         return nil
     }
 
     return name
 }
 
-func showOsd(osdImage: OSDImage, value: UInt32, displayID: CGDirectDisplayID, locked: Bool = false) {
+func showOsd(osdImage: OSDImage, value: UInt32, displayID: CGDirectDisplayID, locked: Bool = false, respectMirroring: Bool = true) {
     guard let manager = OSDManager.sharedManager() as? OSDManager else {
         print("No OSDManager available")
         return
     }
 
+    var osdID = displayID
+    if respectMirroring {
+        let mirroredID = CGDisplayMirrorsDisplay(displayID)
+        osdID = mirroredID != kCGNullDirectDisplay ? mirroredID : displayID
+    }
+
     manager.showImage(
         osdImage.rawValue,
-        onDisplayID: displayID,
+        onDisplayID: osdID,
         priority: 0x1F4,
         msecUntilFade: 1500,
         filledChiclets: value,
@@ -44,7 +50,6 @@ func showOsd(osdImage: OSDImage, value: UInt32, displayID: CGDirectDisplayID, lo
         locked: locked
     )
 }
-
 
 let maxDisplays: UInt32 = 16
 var onlineDisplays = [CGDirectDisplayID](repeating: 0, count: Int(maxDisplays))
@@ -71,5 +76,9 @@ for id in displayIDs {
 
     print("Showing OSD on mirrored display \(mirroredDisplayName) [id: \(mirroredID)]")
     showOsd(osdImage: .brightness, value: 50, displayID: mirroredID)
+    sleep(2)
+
+    print("Showing OSD on mirrored display \(mirroredDisplayName) [id: \(mirroredID)] without respectMirroring")
+    showOsd(osdImage: .brightness, value: 50, displayID: mirroredID, respectMirroring: false)
     sleep(2)
 }
